@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+html<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -235,3 +235,4 @@
             ctx.lineTo(gunX - 8, gunY - 45);
             ctx.closePath(); ctx.fill();
 
+.ctx.fillStyle = "#00e5ff";ctx.fillRect(gunX - 3, gunY - 52, 6, 12);if (bloodOverlayTimer > 0) {ctx.fillStyle = rgba(200, 0, 0, ${bloodOverlayTimer * 0.04});ctx.fillRect(0, 0, canvas.width, canvas.height);}// High-Tech HUD Layoutctx.fillStyle = "rgba(0, 255, 255, 0.25)";ctx.strokeStyle = "rgba(0, 255, 255, 0.5)"; ctx.lineWidth = 1.5;ctx.strokeRect(canvas.width / 2 - 6, canvas.height / 2 - 6 + headBobY, 12, 12); [1.21]ctx.fillStyle = "#00e5ff";ctx.font = "12px monospace";ctx.fillText("SYS_STATUS: ONLINE", 25, 30);ctx.fillText(LOCAL_ID: ${myId}, 25, 48);}function gameLoop() {update();draw();requestAnimationFrame(gameLoop); [1.34]}gameLoop();
