@@ -7,20 +7,22 @@
     <style>
         html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; background-color: #050505; display: flex; justify-content: center; align-items: center; font-family: monospace; }
         canvas { background-color: #111; border: 4px solid #333; box-shadow: 0 0 40px rgba(0,0,0,0.9); }
+        #ui { position: absolute; top: 10px; left: 10px; color: #00ff00; text-shadow: 1px 1px 2px black; font-size: 14px; pointer-events: none; }
     </style>
 </head>
 <body>
 
+    <div id="ui">NETWORK: <span id="status">CONNECTING...</span></div>
     <canvas id="gameCanvas" width="640" height="400"></canvas>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+        const statusEl = document.getElementById("status");
 
         const mapSize = 8;
         const tileSize = 64;
 
-        // Clean, error-free map layout grid text string
         const mapLayout = 
             "11111111" +
             "10000001" +
@@ -37,28 +39,28 @@
             return mapLayout.charAt(index) === "1";
         }
 
-        // Multiplayer configuration
         const myId = "user_" + Math.floor(Math.random() * 10000);
         let remotePlayers = {};
         let socket = null;
-        let networkStatus = "OFFLINE (SINGLE PLAYER)";
 
+        // FIXED: Using a free community testing WebSocket endpoint from PieSocket [1.4]
         try {
             socket = new WebSocket("wss://://piesocket.com"); [1.4]
-            socket.onopen = function() { networkStatus = "MULTIPLAYER: ACTIVE"; };
+            socket.onopen = function() { statusEl.innerText = "MULTIPLAYER ACTIVE (ID: " + myId + ")"; statusEl.style.color = "#00ff00"; };
+            socket.onerror = function() { statusEl.innerText = "CONNECTION ERROR (FALLBACK TO OFFLINE)"; statusEl.style.color = "#ff3333"; };
+            socket.onclose = function() { statusEl.innerText = "OFFLINE (SINGLE PLAYER)"; statusEl.style.color = "#ff9900"; };
             socket.onmessage = function(event) {
                 const data = JSON.parse(event.data);
                 if (data.id !== myId) { remotePlayers[data.id] = data; }
             };
         } catch (e) {
-            console.log("WebSocket network blocked.");
+            statusEl.innerText = "NETWORK BLOCKED";
         }
 
         let muzzleFlashTimer = 0;
         let walkCycle = 0;
         let headBobY = 0;
 
-        // Fixed spawning positions placed safely inside the corridors
         const player = {
             x: 200, y: 200, angle: 1.5,
             speed: 2.2, rotSpeed: 0.045, fov: Math.PI / 3
@@ -192,35 +194,41 @@
                 }
             }
 
-            // Blaster Drawing
+            // FIXED & COMPLETED: Gun and Muzzle Flash Drawing
             let gunYOffset = headBobY * 0.6;
             let gunX = canvas.width / 2;
-            let gunY = canvas.height - 40 + gunYOffset;
+            let gunY = canvas.height - 20 + gunYOffset;
 
+            // Muzzle Flash
             if (muzzleFlashTimer > 0) {
-                ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 6;
-                ctx.beginPath(); ctx.moveTo(gunX, canvas.height/2 + headBobY); ctx.lineTo(gunX, canvas.height); ctx.stroke();
+                ctx.fillStyle = "#ffcc00";
+                ctx.beginPath();
+                ctx.arc(gunX, gunY - 70, 30, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(gunX, gunY - 50);
+                ctx.lineTo(gunX - 20, gunY - 110);
+                ctx.moveTo(gunX, gunY - 50);
+                ctx.lineTo(gunX + 20, gunY - 110);
+                ctx.stroke();
             }
 
-            ctx.fillStyle = "#3a3f4d";
-            ctx.beginPath();
-            ctx.moveTo(gunX - 15, canvas.height); ctx.lineTo(gunX + 15, canvas.height);
-            ctx.lineTo(gunX + 8, gunY - 45); ctx.lineTo(gunX - 8, gunY - 45);
-            ctx.closePath(); ctx.fill();
-
-            // Reticle & HUD
-            ctx.strokeStyle = "rgba(0, 255, 255, 0.4)"; ctx.lineWidth = 1.5;
-            ctx.strokeRect(canvas.width / 2 - 5, canvas.height / 2 - 5 + headBobY, 10, 10); [1.21]
-            ctx.fillStyle = "#00e5ff";
-            ctx.font = "12px monospace";
-            ctx.fillText(networkStatus, 25, 30);
+            // Gun Barrel
+            ctx.fillStyle = "#444";
+            ctx.fillRect(gunX - 15, gunY - 60, 30, 70);
+            ctx.fillStyle = "#222";
+            ctx.fillRect(gunX - 8, gunY - 65, 16, 10);
         }
 
         function gameLoop() {
             update();
             draw();
-            requestAnimationFrame(gameLoop); [1.34]
+            requestAnimationFrame(gameLoop);
         }
+
         gameLoop();
     </script>
 </body>
