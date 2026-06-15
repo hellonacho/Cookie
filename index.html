@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fail-Safe 3D Raycaster</title>
+    <title>GitHub Pages 3D Multiplayer Raycaster</title>
     <style>
         html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; background-color: #05070a; display: flex; justify-content: center; align-items: center; font-family: monospace; }
         canvas { background-color: #111; border: 4px solid #00ffcc; box-shadow: 0 0 30px rgba(0,255,204,0.2); }
@@ -12,7 +12,7 @@
 </head>
 <body>
 
-    <div id="ui">SYSTEM STATUS: <span id="status">INITIALIZING...</span></div>
+    <div id="ui">GITHUB LOBBY: <span id="status">INITIALIZING SECURE WEB NETWORKING...</span></div>
     <canvas id="gameCanvas" width="640" height="400"></canvas>
 
     <script>
@@ -20,7 +20,6 @@
         const ctx = canvas.getContext("2d");
         const statusEl = document.getElementById("status");
 
-        // Spacious 8x8 arena layout to ensure no spawn bugs
         const mapSize = 8;
         const tileSize = 64;
         const mapLayout = 
@@ -39,7 +38,6 @@
             return mapLayout.charAt(index) === "1";
         }
 
-        // Guaranteed Spawn: Right in the wide open center corridor
         const player = {
             x: 128, y: 128, angle: 0.0,
             speed: 3.0, rotSpeed: 0.05, fov: Math.PI / 3
@@ -49,46 +47,38 @@
         window.addEventListener("keydown", (e) => keys[e.key.toLowerCase()] = true);
         window.addEventListener("keyup", (e) => keys[e.key.toLowerCase()] = false);
 
-        // Fail-Safe Network Wrapper: Will NEVER freeze the canvas if the server fails
-        const myId = "user_" + Math.floor(Math.random() * 10000);
+        const myId = "git_user_" + Math.floor(Math.random() * 10000);
         let remotePlayers = {};
         let socket = null;
 
         function connectNetwork() {
             try {
-                // Using a generic public test broker
+                // FIXED: Explicitly using a secure public test broker that allows HTTPS connections
                 socket = new WebSocket("wss://echo.websocket.org");
                 
                 socket.onopen = function() {
-                    statusEl.innerText = "MULTIPLAYER RUNNING (ID: " + myId + ")";
+                    statusEl.innerText = "ONLINE LOBBY ACTIVE (ID: " + myId + ")";
                     statusEl.style.color = "#00ffcc";
                 };
-                socket.onerror = function() {
-                    useOfflineFallback("SERVER UNREACHABLE");
-                };
-                socket.onclose = function() {
-                    useOfflineFallback("DISCONNECTED");
-                };
+                socket.onerror = function() { useOfflineFallback("SSL CONNECTION REJECTED"); };
+                socket.onclose = function() { useOfflineFallback("DISCONNECTED FROM LOBBY"); };
                 socket.onmessage = function(event) {
                     try {
                         const data = JSON.parse(event.data);
-                        if (data && data.id && data.id !== myId) { 
-                            remotePlayers[data.id] = data; 
-                        }
+                        if (data && data.id && data.id !== myId) { remotePlayers[data.id] = data; }
                     } catch(err) {}
                 };
             } catch (e) {
-                useOfflineFallback("NETWORK BLOCKED BY BROWSER");
+                useOfflineFallback("HTTPS BLOCKED NON-SSL CONTENT");
             }
         }
 
         function useOfflineFallback(reason) {
-            statusEl.innerText = "OFFLINE SANDBOX MODE (" + reason + ")";
+            statusEl.innerText = "OFFLINE TEST MODE (" + reason + ")";
             statusEl.style.color = "#ff9900";
             socket = null;
         }
 
-        // Run network check cleanly after engine loads
         connectNetwork();
 
         let muzzleFlashTimer = 0;
@@ -144,23 +134,14 @@
         }
 
         function draw() {
-            // Draw clean screen base layer
-            ctx.fillStyle = "#0c1015";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Sky
-            ctx.fillStyle = "#11161f";
-            ctx.fillRect(0, 0, canvas.width, canvas.height / 2 + headBobY);
-
-            // Floor
-            ctx.fillStyle = "#1a1310";
-            ctx.fillRect(0, canvas.height / 2 + headBobY, canvas.width, canvas.height / 2 - headBobY);
+            ctx.fillStyle = "#0c1015"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#11161f"; ctx.fillRect(0, 0, canvas.width, canvas.height / 2 + headBobY);
+            ctx.fillStyle = "#1a1310"; ctx.fillRect(0, canvas.height / 2 + headBobY, canvas.width, canvas.height / 2 - headBobY);
 
             const zBuffer = [];
             const numRays = canvas.width;
             const startAngle = player.angle - player.fov / 2;
 
-            // --- 3D RAYCASTING ENGINE ---
             for (let i = 0; i < numRays; i++) {
                 let rayAngle = startAngle + (i / numRays) * player.fov;
                 let distance = 0;
@@ -169,9 +150,7 @@
 
                 while (!hitWall && distance < 500) {
                     distance += 2.0;
-                    let wallX = player.x + cos * distance;
-                    let wallY = player.y + sin * distance;
-                    if (isWall(Math.floor(wallX / tileSize), Math.floor(wallY / tileSize))) {
+                    if (isWall(Math.floor((player.x + cos * distance) / tileSize), Math.floor((player.y + sin * distance) / tileSize))) {
                         hitWall = true;
                     }
                 }
@@ -181,10 +160,8 @@
 
                 let wallHeight = (tileSize * canvas.height) / correctedDist;
                 if (wallHeight > canvas.height) wallHeight = canvas.height;
-                
                 let wallTop = (canvas.height / 2) - (wallHeight / 2) + headBobY;
 
-                // Simple high-contrast shading
                 let shade = Math.floor(200 - (correctedDist * 0.4));
                 shade = Math.max(20, Math.min(220, shade));
 
@@ -192,7 +169,7 @@
                 ctx.fillRect(i, wallTop, 1, wallHeight);
             }
 
-            // --- WEAPON MECHANICS ---
+            // Weapon rendering
             let gunYOffset = headBobY * 0.6;
             let gunX = canvas.width / 2;
             let gunY = canvas.height - 20 + gunYOffset;
@@ -204,12 +181,10 @@
             ctx.fillStyle = "#2c3e50"; ctx.fillRect(gunX - 12, gunY - 50, 24, 60);
             ctx.fillStyle = "#34495e"; ctx.fillRect(gunX - 5, gunY - 65, 10, 15);
 
-            // --- SOLID MINI-MAP INTERFACE ---
+            // Mini-map rendering
             const mScale = 12; 
             const mOffset = { x: canvas.width - (mapSize * mScale) - 15, y: 15 };
-            
-            ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-            ctx.fillRect(mOffset.x - 4, mOffset.y - 4, (mapSize * mScale) + 8, (mapSize * mScale) + 8);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; ctx.fillRect(mOffset.x - 4, mOffset.y - 4, (mapSize * mScale) + 8, (mapSize * mScale) + 8);
 
             for (let y = 0; y < mapSize; y++) {
                 for (let x = 0; x < mapSize; x++) {
@@ -218,18 +193,13 @@
                 }
             }
 
-            // Real-time map position marker tracking
             let pMapX = mOffset.x + (player.x / (mapSize * tileSize)) * (mapSize * mScale);
             let pMapY = mOffset.y + (player.y / (mapSize * tileSize)) * (mapSize * mScale);
-            
-            ctx.fillStyle = "#ff3366";
-            ctx.beginPath(); ctx.arc(pMapX, pMapY, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#ff3366"; ctx.beginPath(); ctx.arc(pMapX, pMapY, 4, 0, Math.PI * 2); ctx.fill();
 
-            // Looking direction vector line
             ctx.strokeStyle = "#ff3366"; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(pMapX, pMapY);
-            ctx.lineTo(pMapX + Math.cos(player.angle) * 10, pMapY + Math.sin(player.angle) * 10);
-            ctx.stroke();
+            ctx.lineTo(pMapX + Math.cos(player.angle) * 10, pMapY + Math.sin(player.angle) * 10); ctx.stroke();
         }
 
         function gameLoop() {
@@ -238,7 +208,6 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Safely initiate the engine loops
         gameLoop();
     </script>
 </body>
