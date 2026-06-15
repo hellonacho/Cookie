@@ -17,53 +17,48 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // 1 = Wall, 0 = Empty Space (Map is a solid 16x16 grid loop)
-        const map = [,
- ,
- ,
- ,
- ,
- ,
- ,
- ,
- ,
- ,
- ,
- ,
- ,
- ,
- ,
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        // 1 = Wall, 0 = Empty Space (Perfect 8x8 Grid Map Layout)
+        const map = [
+            [1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 0, 1, 0, 1],
+            [1, 0, 1, 0, 0, 1, 0, 1],
+            [1, 0, 1, 0, 1, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 0, 1, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1]
         ];
 
-        const mapSize = 16;
-        const tileSize = 64; // Pixels per map grid tile
+        const mapWidth = 8;
+        const mapHeight = 8;
+        const tileSize = 64; // Pixels per grid tile block
 
         // Player Variables
         const player = {
-            x: 96,           // Start X position safely inside room
-            y: 96,           // Start Y position safely inside room
-            angle: 0.5,      // Direction facing (in radians)
-            speed: 2.5,      // Forward/backward speed
-            rotSpeed: 0.04,  // Turning speed
+            x: 100,          // Start X position safely inside room
+            y: 100,          // Start Y position safely inside room
+            angle: 0.5,      // Facing angle direction in radians
+            speed: 3,        // Forward/backward speed
+            rotSpeed: 0.05,  // Turning speed
             fov: Math.PI / 3 // Field of View (60 degrees)
         };
 
         const keys = {};
 
-        // Keyboard Event Listeners
+        // Track standard keyboard presses
         window.addEventListener("keydown", (e) => keys[e.key.toLowerCase()] = true);
         window.addEventListener("keyup", (e) => keys[e.key.toLowerCase()] = false);
 
-        // Core Movement Logic
+        // Core Player Movement Logic
         function update() {
-            // A/D Keys Rotate Player Angle Left/Right
+            // A/D Keys or Arrow Keys turn player angle left and right
             if (keys["a"] || keys["arrowleft"])  player.angle -= player.rotSpeed;
             if (keys["d"] || keys["arrowright"]) player.angle += player.rotSpeed;
 
-            // Calculate movement vectors based on current facing angle
             let moveX = 0;
             let moveY = 0;
+
+            // W/S Keys calculate front and back vectors
             if (keys["w"] || keys["arrowup"]) {
                 moveX = Math.cos(player.angle) * player.speed;
                 moveY = Math.sin(player.angle) * player.speed;
@@ -73,31 +68,37 @@
                 moveY = -Math.sin(player.angle) * player.speed;
             }
 
-            // Simple collision detection against wall grid cells
-            let checkGridX = Math.floor((player.x + moveX) / tileSize);
-            let checkGridY = Math.floor((player.y + moveY) / tileSize);
+            // Simple collision detection against wall grid coordinates
+            let newX = player.x + moveX;
+            let newY = player.y + moveY;
 
-            if (map[Math.floor(player.y / tileSize)][checkGridX] === 0) player.x += moveX;
-            if (map[checkGridY][Math.floor(player.x / tileSize)] === 0) player.y += moveY;
+            let gridX = Math.floor(newX / tileSize);
+            let gridY = Math.floor(newY / tileSize);
+
+            if (gridX >= 0 && gridX < mapWidth && gridY >= 0 && gridY < mapHeight) {
+                if (map[gridY][gridX] === 0) {
+                    player.x = newX;
+                    player.y = newY;
+                }
+            }
         }
 
-        // Raycasting and Pseudo-3D Visual Rendering
+        // Raycasting Vector Math and Frame Calculations
         function draw3D() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Sky (Top Half)
+            // Draw Sky (Top half of canvas view)
             ctx.fillStyle = "#223344";
             ctx.fillRect(0, 0, canvas.width, canvas.height / 2);
 
-            // Draw Floor (Bottom Half)
+            // Draw Floor (Bottom half of canvas view)
             ctx.fillStyle = "#332211";
             ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
 
-            const numRays = canvas.width; // Cast 1 ray per vertical pixel column
+            const numRays = canvas.width; // 1 wall stripe ray slice per vertical screen column
             const startAngle = player.angle - player.fov / 2;
 
             for (let i = 0; i < numRays; i++) {
-                // Determine exact angle for this specific screen column
                 let rayAngle = startAngle + (i / numRays) * player.fov;
                 let distance = 0;
                 let hitWall = false;
@@ -105,71 +106,61 @@
                 let cos = Math.cos(rayAngle);
                 let sin = Math.sin(rayAngle);
 
-                // Extend the single line out step-by-step until it hits a wall index
-                while (!hitWall && distance < 800) {
-                    distance += 2; // Ray check step accuracy
+                // Step outwards along the ray direction until hitting a map index block
+                while (!hitWall && distance < 600) {
+                    distance += 1;
                     let checkX = Math.floor((player.x + cos * distance) / tileSize);
                     let checkY = Math.floor((player.y + sin * distance) / tileSize);
 
-                    // Check bounds and wall map array
-                    if (checkX < 0 || checkX >= mapSize || checkY < 0 || checkY >= mapSize) {
+                    if (checkX < 0 || checkX >= mapWidth || checkY < 0 || checkY >= mapHeight) {
                         hitWall = true;
-                        distance = 800;
+                        distance = 600;
                     } else if (map[checkY][checkX] > 0) {
                         hitWall = true;
                     }
                 }
 
-                // Correct Fish-Eye Lens Distortion Effect
+                // Correct fish-eye lens perspective camera bowing
                 let correctedDistance = distance * Math.cos(rayAngle - player.angle);
                 if (correctedDistance < 1) correctedDistance = 1;
 
-                // Calculate Wall Stripe Heights Based on Distance
+                // Wall height calculations relative to viewer distance
                 let wallHeight = (tileSize * canvas.height) / correctedDistance;
                 if (wallHeight > canvas.height) wallHeight = canvas.height;
 
                 let wallTop = (canvas.height / 2) - (wallHeight / 2);
 
-                // Add Deep Realistic Shading (Farther columns look darker)
-                let colorIntensity = Math.floor(200 - (correctedDistance * 0.3));
-                if (colorIntensity < 20) colorIntensity = 20; // Brightness floor floor
-                
-                ctx.fillStyle = `rgb(${colorIntensity}, ${colorIntensity}, ${colorIntensity})`;
+                // Realistic simple depth shading (makes farther away segments darker)
+                let shade = Math.floor(180 - (correctedDistance * 0.4));
+                if (shade < 15) shade = 15;
+                ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
 
-                // Draw the single pixel column vertical slice
+                // Render single stripe column line
                 ctx.fillRect(i, wallTop, 1, wallHeight);
             }
 
-            // Crosshair overlay
+            // Crosshair visual tracker element
             ctx.fillStyle = "rgba(255,255,255,0.4)";
             ctx.fillRect(canvas.width / 2 - 4, canvas.height / 2 - 1, 8, 2);
             ctx.fillRect(canvas.width / 2 - 1, canvas.height / 2 - 4, 2, 8);
 
-            // Add a classic FPS retro blaster triangle sprite
+            // Animated weapon bob positioning
             let weaponBob = 0;
             if (keys["w"] || keys["s"] || keys["a"] || keys["d"]) {
-                weaponBob = Math.sin(Date.now() * 0.01) * 5; // Bobs up and down when moving
+                weaponBob = Math.sin(Date.now() * 0.01) * 4;
             }
 
-            ctx.fillStyle = "#555566"; // Dark steel color
+            // Blaster weapon frame art overlay
+            ctx.fillStyle = "#555566";
             ctx.beginPath();
-            ctx.moveTo(canvas.width / 2 - 30, canvas.height); // Left base
-            ctx.lineTo(canvas.width / 2 + 30, canvas.height); // Right base
-            ctx.lineTo(canvas.width / 2, canvas.height - 90 + weaponBob); // Blaster tip
-            ctx.closePath();
-            ctx.fill();
-
-            // Blaster muzzle detail
-            ctx.fillStyle = "#333344";
-            ctx.beginPath();
-            ctx.moveTo(canvas.width / 2 - 10, canvas.height);
-            ctx.lineTo(canvas.width / 2 + 10, canvas.height);
-            ctx.lineTo(canvas.width / 2, canvas.height - 95 + weaponBob);
+            ctx.moveTo(canvas.width / 2 - 25, canvas.height);
+            ctx.lineTo(canvas.width / 2 + 25, canvas.height);
+            ctx.lineTo(canvas.width / 2, canvas.height - 80 + weaponBob);
             ctx.closePath();
             ctx.fill();
         }
 
-        // Processing Driver Loop
+        // Loop engine configuration setup
         function gameLoop() {
             update();
             draw3D();
