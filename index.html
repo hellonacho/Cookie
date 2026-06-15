@@ -3,30 +3,47 @@
 <head>
     <title>My 3D Game</title>
     <style>
-        html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; background: #000; }
-        #renderCanvas { width: 100%; height: 100%; }
+        html, body { overflow: hidden; width: 100%; height: 100%; margin: 0; background-color: #000; }
+        #renderCanvas { width: 100%; height: 100%; display: block; }
     </style>
-    <script src="https://babylonjs.com"></script>
-    <script src="https://babylonjs.com"></script>
+    <!-- Combined, highly-compatible unblocked script mirrors -->
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
     <script>
-        const canvas = document.getElementById("renderCanvas");
-        const engine = new BABYLON.Engine(canvas, true);
-        const createScene = function () {
-            const scene = new BABYLON.Scene(engine);
-            const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/2, Math.PI/2.5, 15, new BABYLON.Vector3(0, 3, 0), scene);
-            camera.attachControl(canvas, true);
-            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-            const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2}, scene);
-            sphere.position.y = 3;
-            const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 20, height: 20}, scene);
-            return scene;
-        };
-        const scene = createScene();
-        engine.runRenderLoop(function () { scene.render(); });
-        window.addEventListener("resize", function () { engine.resize(); });
+        window.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById("renderCanvas");
+            
+            // Forces the engine to use standard WebGL1 if your device blocks WebGL2
+            const engine = new BABYLON.Engine(canvas, true, { disableWebGL2Support: true, preserveDrawingBuffer: true });
+
+            const createScene = function () {
+                const scene = new BABYLON.Scene(engine);
+                scene.clearColor = new BABYLON.Color4(0.1, 0.1, 0.1, 1); // Changes background from pitch black to dark grey so you know it loaded!
+
+                const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/2, Math.PI/2.5, 10, new BABYLON.Vector3(0, 1, 0), scene);
+                camera.attachControl(canvas, true);
+
+                const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+                
+                // Added an emissive material color so the object renders even without complex lighting calculations
+                const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2}, scene);
+                sphere.position.y = 1;
+                const material = new BABYLON.StandardMaterial("sphereMat", scene);
+                material.emissiveColor = new BABYLON.Color3(1, 0, 0); // Makes the sphere bright RED
+                sphere.material = material;
+
+                const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 10, height: 10}, scene);
+                
+                return scene;
+            };
+
+            const scene = createScene();
+            engine.runRenderLoop(function () { scene.render(); });
+            window.addEventListener("resize", function () { engine.resize(); });
+        });
     </script>
 </body>
 </html>
