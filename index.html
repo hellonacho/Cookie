@@ -17,7 +17,7 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // 1 = Wall, 0 = Empty Corridor Space
+        // 1 = Solid Wall Block, 0 = Empty Corridor Space (Fixed 8x8 Grid Array)
         const map = [,
  ,
  ,
@@ -73,7 +73,7 @@
             while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
             while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
 
-            // If the enemy is roughly in the center of our 60-degree FOV screen column
+            // If the enemy is roughly in the center of our crosshair columns
             if (Math.abs(angleDiff) < 0.15) {
                 enemy.alive = false;
                 score += 100;
@@ -113,7 +113,7 @@
                 enemy.respawnTimer--;
                 if (enemy.respawnTimer <= 0) {
                     enemy.alive = true;
-                    // Move to random empty space
+                    // Move to random empty corridor spaces
                     enemy.x = 200 + Math.random() * 200;
                     enemy.y = 200 + Math.random() * 100;
                 }
@@ -126,7 +126,7 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 1. Draw Environment
+            // 1. Draw Environment Split
             ctx.fillStyle = "#1a2530"; ctx.fillRect(0, 0, canvas.width, canvas.height / 2); // Sky
             ctx.fillStyle = "#2d1f10"; ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2); // Floor
 
@@ -162,7 +162,7 @@
                 ctx.fillRect(i, wallTop, 1, wallHeight);
             }
 
-            // 3. Render Enemy Sprite Billboards (Sprite projection math)
+            // 3. Render Enemy Sprite Billboards
             if (enemy.alive) {
                 let ex = enemy.x - player.x;
                 let ey = enemy.y - player.y;
@@ -171,31 +171,27 @@
                 while (spriteAngle < -Math.PI) spriteAngle += Math.PI * 2;
                 while (spriteAngle > Math.PI) spriteAngle -= Math.PI * 2;
 
-                // Ensure sprite is inside camera view field
                 if (Math.abs(spriteAngle) < player.fov) {
                     let spriteDist = Math.sqrt(ex*ex + ey*ey);
                     let spriteSize = (tileSize * canvas.height) / spriteDist;
 
-                    // Screen position alignment calculations
                     let screenX = (canvas.width / 2) + Math.tan(spriteAngle) * (canvas.width / 2) - (spriteSize / 2);
                     let screenY = (canvas.height / 2) - (spriteSize / 2);
 
-                    // Draw if sprite is closer than the wall behind it
                     let checkColumn = Math.floor(screenX + spriteSize / 2);
                     if (checkColumn >= 0 && checkColumn < canvas.width && spriteDist < zBuffer[checkColumn]) {
-                        ctx.fillStyle = "#ff3333"; // Crimson drone color
+                        ctx.fillStyle = "#ff3333"; // Crimson target circle
                         ctx.beginPath();
                         ctx.arc(screenX + spriteSize/2, screenY + spriteSize/2, spriteSize/4, 0, Math.PI * 2);
                         ctx.fill();
                         
-                        // Cyber-Eye details
-                        ctx.fillStyle = "#ffffff";
+                        ctx.fillStyle = "#ffffff"; // Drone core
                         ctx.fillRect(screenX + spriteSize/2 - 2, screenY + spriteSize/2 - 2, 4, 4);
                     }
                 }
             }
 
-            // 4. Draw HUD (Crosshair & Score Overlay)
+            // 4. Draw HUD Overlays
             ctx.fillStyle = "rgba(0, 255, 0, 0.5)"; // Cyber Green UI
             ctx.fillRect(canvas.width / 2 - 5, canvas.height / 2 - 1, 10, 2);
             ctx.fillRect(canvas.width / 2 - 1, canvas.height / 2 - 5, 2, 10);
@@ -205,10 +201,9 @@
             ctx.fillText(`SCORE: ${score}`, 20, 35);
             ctx.fillText("CLICK SCREEN TO BLAST", 20, 65);
 
-            // 5. Blaster Art Display
+            // 5. Weapon Render
             let weaponBob = (keys["w"] || keys["s"] || keys["a"] || keys["d"]) ? Math.sin(Date.now() * 0.012) * 5 : 0;
             
-            // Draw Laser Blast Beam if flashing
             if (muzzleFlashTimer > 0) {
                 ctx.strokeStyle = "#00ffff"; ctx.lineWidth = 4;
                 ctx.beginPath(); ctx.moveTo(canvas.width/2, canvas.height/2); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
@@ -217,7 +212,6 @@
                 ctx.arc(canvas.width / 2, canvas.height - 90 + weaponBob, 25, 0, Math.PI * 2); ctx.fill();
             }
 
-            // Metallic gun base geometry
             ctx.fillStyle = "#444455"; ctx.beginPath();
             ctx.moveTo(canvas.width / 2 - 20, canvas.height);
             ctx.lineTo(canvas.width / 2 + 20, canvas.height);
