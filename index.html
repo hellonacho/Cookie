@@ -17,7 +17,7 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // 1 = Wall, 0 = Empty Space (Map is 16x16 grid)
+        // 1 = Wall, 0 = Empty Space (Map is a solid 16x16 grid loop)
         const map = [,
  ,
  ,
@@ -41,10 +41,10 @@
 
         // Player Variables
         const player = {
-            x: 120,          // Start X position
-            y: 120,          // Start Y position
-            angle: 0,        // Direction facing (in radians)
-            speed: 3,        // Forward/backward speed
+            x: 96,           // Start X position safely inside room
+            y: 96,           // Start Y position safely inside room
+            angle: 0.5,      // Direction facing (in radians)
+            speed: 2.5,      // Forward/backward speed
             rotSpeed: 0.04,  // Turning speed
             fov: Math.PI / 3 // Field of View (60 degrees)
         };
@@ -132,7 +132,7 @@
 
                 // Add Deep Realistic Shading (Farther columns look darker)
                 let colorIntensity = Math.floor(200 - (correctedDistance * 0.3));
-                if (colorIntensity < 20) colorIntensity = 20; // Floor brightness cap
+                if (colorIntensity < 20) colorIntensity = 20; // Brightness floor floor
                 
                 ctx.fillStyle = `rgb(${colorIntensity}, ${colorIntensity}, ${colorIntensity})`;
 
@@ -144,6 +144,29 @@
             ctx.fillStyle = "rgba(255,255,255,0.4)";
             ctx.fillRect(canvas.width / 2 - 4, canvas.height / 2 - 1, 8, 2);
             ctx.fillRect(canvas.width / 2 - 1, canvas.height / 2 - 4, 2, 8);
+
+            // Add a classic FPS retro blaster triangle sprite
+            let weaponBob = 0;
+            if (keys["w"] || keys["s"] || keys["a"] || keys["d"]) {
+                weaponBob = Math.sin(Date.now() * 0.01) * 5; // Bobs up and down when moving
+            }
+
+            ctx.fillStyle = "#555566"; // Dark steel color
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2 - 30, canvas.height); // Left base
+            ctx.lineTo(canvas.width / 2 + 30, canvas.height); // Right base
+            ctx.lineTo(canvas.width / 2, canvas.height - 90 + weaponBob); // Blaster tip
+            ctx.closePath();
+            ctx.fill();
+
+            // Blaster muzzle detail
+            ctx.fillStyle = "#333344";
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2 - 10, canvas.height);
+            ctx.lineTo(canvas.width / 2 + 10, canvas.height);
+            ctx.lineTo(canvas.width / 2, canvas.height - 95 + weaponBob);
+            ctx.closePath();
+            ctx.fill();
         }
 
         // Processing Driver Loop
