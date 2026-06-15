@@ -1,4 +1,4 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>3D FPS</title><style>
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>3D Arena</title><style>
 html,body{overflow:hidden;width:100%;height:100%;margin:0;background:#05070a;display:flex;justify-content:center;align-items:center;font-family:monospace;}
 canvas{background:#111;border:4px solid #00ffcc;box-shadow:0 0 30px rgba(0,255,204,0.2);}
 #ui{position:absolute;top:15px;left:15px;color:#00ffcc;font-weight:bold;z-index:5;}
@@ -9,19 +9,19 @@ canvas{background:#111;border:4px solid #00ffcc;box-shadow:0 0 30px rgba(0,255,2
 #btn{background:#00ffcc;color:#05070a;border:none;padding:12px 40px;font-size:16px;font-weight:bold;cursor:pointer;border-radius:4px;}
 </style></head><body>
 <div id="ui">STATUS: <span id="status">OFFLINE</span></div>
-<div id="menu"><h1>ooga booga</h1>
+<div id="menu"><h1>SELECT YOUR UNIT</h1>
 <div class="cards">
-<div class="card sel" onclick="sel('scout',this)"><h3>SCOUT</h3><p>FAST<br>CYAN</p></div>
-<div class="card" onclick="sel('enforcer',this)"><h3>ENFORCER</h3><p>SLOW<br>RED</p></div>
-<div class="card" onclick="sel('tech',this)"><h3>TECH</h3><p>NORMAL<br>GOLD</p></div>
+<div class="card sel" onclick="sel('scout',this)"><h3>SCOUT</h3><p>FAST<br>CYAN SUIT</p></div>
+<div class="card" onclick="sel('enforcer',this)"><h3>ENFORCER</h3><p>SLOW<br>RED SUIT</p></div>
+<div class="card" onclick="sel('tech',this)"><h3>TECH</h3><p>NORMAL<br>GOLD SUIT</p></div>
 </div><button id="btn" onclick="start()">DEPLOY</button></div>
 <canvas id="gameCanvas" width="640" height="400"></canvas>
 <script>
 const canvas=document.getElementById("gameCanvas"),ctx=canvas.getContext("2d"),statusEl=document.getElementById("status");
 let active=false,mapSize=8,tileSize=64,map="1111111110000001101001011000000110000001101001011000000111111111";
-const p={x:128,y:128,a:0,spd:3.8,rot:0.05,fov:Math.PI/2.4,col:"#00ffcc"};
+const p={x:128,y:128,a:0,spd:3.8,rot:0.05,fov:Math.PI/2.4,col:"#00ffcc",cls:"scout"};
 function isWall(x,y){if(x<0||x>=mapSize||y<0||y>=mapSize)return true;return map.charAt(Math.floor(y)*mapSize+Math.floor(x))==="1";}
-function sel(c,e){document.querySelectorAll('.card').forEach(k=>k.classList.remove('sel'));e.classList.add('sel');
+function sel(c,e){document.querySelectorAll('.card').forEach(k=>k.classList.remove('sel'));e.classList.add('sel');p.cls=c;
 if(c==='scout'){p.spd=3.8;p.fov=Math.PI/2.4;p.col="#00ffcc";}
 else if(c==='enforcer'){p.spd=2.2;p.fov=Math.PI/3.2;p.col="#ff3366";}
 else{p.spd=3.0;p.fov=Math.PI/3.0;p.col="#ffcc00";}}
@@ -30,15 +30,26 @@ const keys={};window.addEventListener("keydown",e=>{if(active)keys[e.key.toLower
 window.addEventListener("keyup",e=>{if(active)keys[e.key.toLowerCase()]=false;});
 let id="u_"+Math.floor(Math.random()*10000),rem={},sock=null,flash=0,cycle=0,bob=0;
 function net(){try{sock=new WebSocket("wss://echo.websocket.org");sock.onopen=()=>{statusEl.innerText="ONLINE";};sock.onmessage=e=>{try{const d=JSON.parse(e.data);if(d&&d.id!==id)rem[d.id]=d;}catch(x){}};sock.onerror=()=>fallback();sock.onclose=()=>fallback();}catch(e){fallback();}}
-function fallback(){statusEl.innerText="SANDBOX";statusEl.style.color="#ff9900";sock=null;}
+function fallback(){statusEl.innerText="SANDBOX (DEMO BOTS ENABLED)";statusEl.style.color="#ff9900";sock=null;
+rem["bot1"]={id:"bot1",x:200,y:250,s:false,c:"#ff3366",cls:"enforcer"};rem["bot2"]={id:"bot2",x:350,y:150,s:false,c:"#ffcc00",cls:"tech"};}
 canvas.addEventListener("mousedown",()=>{if(active&&flash<=0){flash=5;send(true);}});
-function send(s){if(sock&&sock.readyState===1)sock.send(JSON.stringify({id,x:p.x,y:p.y,s,c:p.col}));}
+function send(s){if(sock&&sock.readyState===1)sock.send(JSON.stringify({id,x:p.x,y:p.y,s,c:p.col,cls:p.cls}));}
 setInterval(()=>{if(active)send(flash>0);},100);
 function update(){let m=false;if(keys["a"]||keys["arrowleft"])p.a-=p.rot;if(keys["d"]||keys["arrowright"])p.a+=p.rot;
 let mx=0,my=0;if(keys["w"]||keys["arrowup"]){mx=Math.cos(p.a)*p.spd;my=Math.sin(p.a)*p.spd;m=true;}
 if(keys["s"]||keys["arrowdown"]){mx=-Math.cos(p.a)*p.spd;my=-Math.sin(p.a)*p.spd;m=true;}
 let nx=p.x+mx,ny=p.y+my;if(!isWall(nx/tileSize,p.y/tileSize))p.x=nx;if(!isWall(p.x/tileSize,ny/tileSize))p.y=ny;
-if(m){cycle+=0.3;bob=Math.sin(cycle)*5;}else{bob=Math.sin(Date.now()*0.002);}if(flash>0)flash--;}
+if(m){cycle+=0.3;bob=Math.sin(cycle)*5;}else{bob=Math.sin(Date.now()*0.002);}if(flash>0)flash--;
+if(!sock){let t=Date.now()*0.001;rem["bot1"].x=200+Math.sin(t)*30;rem["bot1"].y=250+Math.cos(t)*20;rem["bot2"].s=(Math.floor(t)%2===0);}}
+function drawHumanSprite(sx,sy,sz,o){
+let szW=sz*0.6,szH=sz;
+ctx.fillStyle="rgba(0,0,0,0.4)";ctx.beginPath();ctx.ellipse(sx,sy+szH/2,szW/2,szH/12,0,0,Math.PI*2);ctx.fill();
+let cCl=o.c||"#00ffcc";ctx.fillStyle="#424949";ctx.fillRect(sx-szW/5,sy+szH/6,szW/2.5,szH/3);
+ctx.fillStyle=cCl;ctx.fillRect(sx-szW/4,sy-szH/6,szW/2,szH/3);
+ctx.fillStyle="#d5dbdb";ctx.fillRect(sx-szW/3,sy-szH/5,szW/4,szH/5);ctx.fillRect(sx+szW/12,sy-szH/5,szW/4,szH/5);
+ctx.fillStyle="#f5cba7";ctx.fillRect(sx-szW/8,sy-szH/2.7,szW/4,szH/5);
+ctx.fillStyle="#2c3e50";ctx.fillRect(sx-szW/6,sy-szH/2.4,szW/3,szH/8);
+if(o.s){ctx.fillStyle="#fff";ctx.fillRect(sx-szW/2,sy-szH/8,szW,szH/20);ctx.fillStyle="#ff3333";ctx.fillRect(sx-szW/2,sy-szH/7,szW/5,szH/30);}}
 function draw(){ctx.fillStyle="#0c1015";ctx.fillRect(0,0,canvas.width,canvas.height);
 ctx.fillStyle="#11161f";ctx.fillRect(0,0,canvas.width,canvas.height/2+bob);
 ctx.fillStyle="#1a1310";ctx.fillRect(0,canvas.height/2+bob,canvas.width,canvas.height/2-bob);
@@ -50,8 +61,8 @@ let top=(canvas.height/2)-(h/2)+bob,sh=Math.max(20,Math.min(220,Math.floor(200-(
 ctx.fillStyle=`rgb(${sh},${Math.floor(sh*0.7)},${Math.floor(sh*0.5)})`;ctx.fillRect(i,top,1,h);}
 for(let k in rem){let o=rem[k],ex=o.x-p.x,ey=o.y-p.y,sa=Math.atan2(ey,ex)-p.a;
 while(sa<-Math.PI)sa+=Math.PI*2;while(sa>Math.PI)sa-=Math.PI*2;
-if(Math.abs(sa)<p.fov){let sd=Math.sqrt(ex*ex+ey*ey),ss=(tileSize*canvas.height)/sd,sx=(canvas.width/2)+Math.tan(sa)*(canvas.width/2)-(ss/2),sy=(canvas.height/2)-(ss/2)+bob,col=Math.floor(sx+ss/2);
-if(col>=0&&col<canvas.width&&sd<zb[col]){ctx.fillStyle=o.s?"#fff":(o.c||"#00ffcc");ctx.beginPath();ctx.arc(sx+ss/2,sy+ss/2,ss/4,0,Math.PI*2);ctx.fill();}}}
+if(Math.abs(sa)<p.fov){let sd=Math.sqrt(ex*ex+ey*ey),ss=(tileSize*canvas.height)/sd,sx=(canvas.width/2)+Math.tan(sa)*(canvas.width/2),sy=(canvas.height/2)+bob,col=Math.floor(sx);
+if(col>=0&&col<canvas.width&&sd<zb[col]){drawHumanSprite(sx,sy,ss,o);}}}
 let gx=canvas.width/2,gy=canvas.height-20+bob*0.6;if(flash>0){ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(gx,gy-65,25,0,Math.PI*2);ctx.fill();}
 ctx.fillStyle="#2c3e50";ctx.fillRect(gx-12,gy-50,24,60);ctx.fillStyle=p.col;ctx.fillRect(gx-3,gy-65,6,20);
 const sc=12,off={x:canvas.width-(mapSize*sc)-15,y:15};ctx.fillStyle="rgba(0,0,0,0.85)";ctx.fillRect(off.x-4,off.y-4,(mapSize*sc)+8,(mapSize*sc)+8);
